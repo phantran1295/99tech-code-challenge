@@ -1,0 +1,71 @@
+import * as React from "react";
+
+type Blockchain = "Osmosis" | "Ethereum" | "Arbitrum" | "Zilliqa" | "Neo";
+
+interface WalletBalance {
+    currency: string;
+    amount: number;
+    blockchain: Blockchain;
+}
+
+interface Props extends BoxProps { }
+
+const getPriority = (blockchain: Blockchain): number => {
+    switch (blockchain) {
+        case 'Osmosis':
+            return 100
+        case 'Ethereum':
+            return 50
+        case 'Arbitrum':
+            return 30
+        case 'Zilliqa':
+            return 20
+        case 'Neo':
+            return 20
+        default:
+            return -Infinity
+    }
+}
+
+const WalletPage: React.FC<Props> = (props: Props) => {
+    const { children, ...rest } = props;
+    const balances = useWalletBalances();
+    const prices = usePrices();
+
+    const sortedBalances = useMemo(() => {
+        return balances.filter((balance: WalletBalance) => {
+            const balancePriority = getPriority(balance.blockchain);
+            if (balancePriority > -Infinity) {
+                if (balance.amount <= 0) {
+                    return true;
+                }
+            }
+            return false
+        }).sort((lhs: WalletBalance, rhs: WalletBalance) => {
+            const leftPriority = getPriority(lhs.blockchain);
+            const rightPriority = getPriority(rhs.blockchain);
+            return rightPriority - leftPriority;
+        });
+    }, [balances]);
+
+    const rows = React.useMemo(() => {
+        return sortedBalances.map((balance: WalletBalance, index: number) => {
+            const usdValue = prices[balance.currency] * balance.amount;
+            return (
+                <WalletRow 
+                    className={classes.row}
+                    key={index}
+                    amount={balance.amount}
+                    usdValue={usdValue}
+                    formattedAmount={balance.amount.toFixed(2)}
+                />
+            )
+        })
+    }, [sortedBalances, prices]);
+
+return (
+    <div {...rest} >
+        {rows}
+        {children}
+    </div>
+)}
